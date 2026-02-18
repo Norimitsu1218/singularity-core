@@ -1,0 +1,38 @@
+name: auto-fix-deps
+on:
+  workflow_run:
+    workflows: ["gate-deps"]
+    types: [completed]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  autofix:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - run: npm ci
+      - name: Guard-1 (Cause Check)
+        run: |
+          if ./scripts/gate-deps.sh | grep -q "denylist"; then
+            ./scripts/fix-deps.sh "@google/generative-ai"
+          else
+            echo "Not a denylist failure. Skipping."; exit 0
+          fi
+      - name: Guard-2 & 3 (Validate & File Check)
+        run: |
+          ./scripts/gate-deps.sh
+          CHANGES=$(git diff --name-only | xargs)
+          if [[ "$CHANGES" =~ ^(package\.json|package-lock\.json)[[:space:]]*$ ]] || [[ "$CHANGES" == "package.json" ]] || [[ "$CHANGES" == "package-lock.json" ]]; then
+            echo "Valid changes detected."
+          else
+            echo "Invalid file changes: $CHANGES"; exit 1
+          fi
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          branch: autofix/denylist
+          title: "autofix: purge denylisted dependency"
+          commit-message: "autofix: purge denylisted dependency"
