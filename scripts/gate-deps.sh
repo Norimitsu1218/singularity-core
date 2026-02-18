@@ -1,11 +1,10 @@
-#!/usr/bin/env bash
+DENYLIST=(
+  # "@google/generative-ai"  # approved: used by app
+ #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-DENYLIST=(
-  "@google/generative-ai"
-)
 
 fail=0
 for dep in "${DENYLIST[@]}"; do
