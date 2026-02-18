@@ -1,0 +1,14 @@
+./scripts/gate-deps.sh:7:  "@google/generative-ai"
+./scripts/fix-deps.sh:6:PKG="${1:-@google/generative-ai}"
+./scripts/doctor.sh:14:echo "[2/6] who pulls @google/generative-ai"
+./scripts/doctor.sh:15:npm ls @google/generative-ai >"$OUT/npm_ls_google_generative_ai.txt" 2>&1 || true
+./scripts/doctor.sh:19:  rg -n "@google/generative-ai" -S . >"$OUT/rg_hits.txt" 2>&1 || true
+./scripts/doctor.sh:25:( rg -n "@google/generative-ai" package.json package-lock.json 2>/dev/null || true ) >"$OUT/rg_pkg_lock_hits.txt"
+./evidence_pack_20260218_235226/package-lock.json_head.txt:12:        "@google/generative-ai": "^0.24.1",
+./artifacts/doctor_20260219_003859/rg_hits.txt:1:./scripts/gate-deps.sh:7:  "@google/generative-ai"
+./artifacts/doctor_20260219_003859/rg_hits.txt:2:./scripts/fix-deps.sh:6:PKG="${1:-@google/generative-ai}"
+./artifacts/doctor_20260219_003859/rg_hits.txt:3:./scripts/doctor.sh:14:echo "[2/6] who pulls @google/generative-ai"
+./artifacts/doctor_20260219_003859/rg_hits.txt:4:./scripts/doctor.sh:15:npm ls @google/generative-ai >"$OUT/npm_ls_google_generative_ai.txt" 2>&1 || true
+./artifacts/doctor_20260219_003859/rg_hits.txt:5:./scripts/doctor.sh:19:  rg -n "@google/generative-ai" -S . >"$OUT/rg_hits.txt" 2>&1 || true
+./artifacts/doctor_20260219_003859/rg_hits.txt:6:./scripts/doctor.sh:25:( rg -n "@google/generative-ai" package.json package-lock.json 2>/dev/null || true ) >"$OUT/rg_pkg_lock_hits.txt"
+./artifacts/doctor_20260219_003859/rg_hits.txt:7:./evidence_pack_20260218_235226/package-lock.json_head.txt:12:        "@google/generative-ai": "^0.24.1",
