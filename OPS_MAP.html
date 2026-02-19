@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Singularity Core Ops Map</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --line: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --accent: #38bdf8;
+      --node-shell: #1d4ed8;
+      --node-script: #0f766e;
+      --node-ci: #7c3aed;
+      --node-doc: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 15% -10%, #1e293b 0%, var(--bg) 50%, #020617 100%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+    .panel {
+      background: color-mix(in srgb, var(--panel) 88%, #000 12%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      letter-spacing: 0.2px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    p.meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 16px;
+    }
+    pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #d1d5db;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #0b1220;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    #map {
+      width: 100%;
+      height: 560px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #0b1220 0%, #0a1020 100%);
+      display: block;
+    }
+    .footer {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      #map { height: 460px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>Singularity Core Ops Map</h1>
+      <p class="meta">Tree + Canvas view of the operation stack created in this repository.</p>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Tree View</h2>
+        <pre id="tree"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Canvas View</h2>
+        <div class="legend">
+          <span class="tag"><span class="dot" style="background: var(--node-shell)"></span>Shell Entry</span>
+          <span class="tag"><span class="dot" style="background: var(--node-script)"></span>Scripts</span>
+          <span class="tag"><span class="dot" style="background: var(--node-ci)"></span>CI Workflows</span>
+          <span class="tag"><span class="dot" style="background: var(--node-doc)"></span>Ops Docs</span>
+        </div>
+        <canvas id="map" width="900" height="560"></canvas>
+      </section>
+    </div>
+
+    <div class="panel footer">
+      Start routine: <code>./cmdbox.sh status</code> -> <code>./cmdbox.sh gate</code> -> <code>./cmdbox.sh diff</code> -> <code>./cmdbox.sh pr</code>
+    </div>
+  </div>
+
+  <script>
+    const treeText = `
+singularity-core/
+├─ cmdbox.sh
+│  ├─ status      (repo/branch check)
+│  ├─ gate        (run dependency gate)
+│  ├─ diff        (review change scope)
+│  ├─ pr          (open PR page for current branch)
+│  ├─ rollback    (fetch + reset hard to origin/current-branch)
+│  └─ stash-safe  (stash -u + show stash list)
+├─ scripts/
+│  ├─ gate-deps.sh
+│  │  └─ denylist scan in package.json + package-lock.json
+│  ├─ fix-deps.sh
+│  │  └─ remove package -> reinstall -> verify cleanup
+│  └─ doctor.sh
+│     └─ diagnostics to artifacts/doctor_*/ (env, deps, audit)
+├─ .github/workflows/
+│  ├─ gate-deps.yml
+│  │  ├─ triggers: push(main), pull_request, workflow_dispatch
+│  │  └─ steps: npm ci -> ./scripts/gate-deps.sh
+│  └─ autofix-deps.yml
+│     ├─ trigger: workflow_run(gate-deps) on failure only
+│     ├─ guards: skip autofix/* branches, same-repo only
+│     ├─ fix: ./scripts/fix-deps.sh "@google/generative-ai"
+│     ├─ validate: gate must pass, only package*.json can change
+│     └─ output: create PR branch autofix/denylist
+└─ Ops Docs
+   ├─ RUNBOOK.md
+   ├─ PROMPT_TEMPLATE.md
+   └─ DEFINITION_OF_DONE.md
+`.trim();
+    document.getElementById("tree").textContent = treeText;
+
+    const nodes = [
+      { id: "cmdbox", label: "cmdbox.sh", type: "shell", x: 110, y: 120, w: 170, h: 52 },
+
+      { id: "gate", label: "scripts/gate-deps.sh", type: "script", x: 360, y: 70, w: 210, h: 52 },
+      { id: "fix", label: "scripts/fix-deps.sh", type: "script", x: 360, y: 150, w: 210, h: 52 },
+      { id: "doctor", label: "scripts/doctor.sh", type: "script", x: 360, y: 230, w: 210, h: 52 },
+
+      { id: "ci-gate", label: ".github/workflows/gate-deps.yml", type: "ci", x: 640, y: 70, w: 230, h: 52 },
+      { id: "ci-autofix", label: ".github/workflows/autofix-deps.yml", type: "ci", x: 640, y: 170, w: 230, h: 52 },
+
+      { id: "runbook", label: "RUNBOOK.md", type: "doc", x: 120, y: 350, w: 170, h: 48 },
+      { id: "prompt", label: "PROMPT_TEMPLATE.md", type: "doc", x: 320, y: 350, w: 200, h: 48 },
+      { id: "dod", label: "DEFINITION_OF_DONE.md", type: "doc", x: 560, y: 350, w: 230, h: 48 },
+
+      { id: "out", label: "Output: Safe PR Flow", type: "shell", x: 640, y: 460, w: 230, h: 52 },
+    ];
+
+    const edges = [
+      ["cmdbox", "gate"],
+      ["cmdbox", "doctor"],
+      ["gate", "ci-gate"],
+      ["ci-gate", "ci-autofix"],
+      ["ci-autofix", "fix"],
+      ["fix", "gate"],
+      ["cmdbox", "out"],
+      ["runbook", "cmdbox"],
+      ["prompt", "cmdbox"],
+      ["dod", "ci-autofix"],
+      ["dod", "ci-gate"],
+    ];
+
+    const colors = {
+      shell: getComputedStyle(document.documentElement).getPropertyValue("--node-shell").trim(),
+      script: getComputedStyle(document.documentElement).getPropertyValue("--node-script").trim(),
+      ci: getComputedStyle(document.documentElement).getPropertyValue("--node-ci").trim(),
+      doc: getComputedStyle(document.documentElement).getPropertyValue("--node-doc").trim(),
+    };
+
+    const canvas = document.getElementById("map");
+    const ctx = canvas.getContext("2d");
+
+    function center(node) {
+      return { x: node.x + node.w / 2, y: node.y + node.h / 2 };
+    }
+
+    function drawArrow(from, to) {
+      const a = center(from);
+      const b = center(to);
+      const angle = Math.atan2(b.y - a.y, b.x - a.x);
+      const padFrom = Math.min(from.w, from.h) * 0.32;
+      const padTo = Math.min(to.w, to.h) * 0.34;
+      const sx = a.x + Math.cos(angle) * padFrom;
+      const sy = a.y + Math.sin(angle) * padFrom;
+      const ex = b.x - Math.cos(angle) * padTo;
+      const ey = b.y - Math.sin(angle) * padTo;
+
+      ctx.strokeStyle = "#64748b";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+
+      const h = 8;
+      ctx.fillStyle = "#64748b";
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - h * Math.cos(angle - 0.45), ey - h * Math.sin(angle - 0.45));
+      ctx.lineTo(ex - h * Math.cos(angle + 0.45), ey - h * Math.sin(angle + 0.45));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawNode(node) {
+      const fill = colors[node.type] || "#334155";
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = "#0b1220";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(node.x, node.y, node.w, node.h, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "600 13px ui-sans-serif, system-ui, -apple-system";
+      const padX = 10;
+      const y = node.y + node.h / 2 + 4;
+      ctx.fillText(node.label, node.x + padX, y);
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const [fromId, toId] of edges) {
+        const from = nodes.find((n) => n.id === fromId);
+        const to = nodes.find((n) => n.id === toId);
+        if (from && to) drawArrow(from, to);
+      }
+      for (const node of nodes) drawNode(node);
+    }
+
+    render();
+  </script>
+</body>
+</html>
