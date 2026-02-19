@@ -1,10 +1,12 @@
-DENYLIST=(
-  # "@google/generative-ai"  # approved: used by app
- #!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# approved: used by app
+DENYLIST=(
+  # "@google/generative-ai"
+)
 
 fail=0
 for dep in "${DENYLIST[@]}"; do
@@ -14,7 +16,6 @@ for dep in "${DENYLIST[@]}"; do
       fail=1
     fi
   else
-    # fallback grep
     if grep -R "$dep" package.json package-lock.json >/dev/null 2>&1; then
       echo "[NG] denylisted dep referenced: $dep"
       fail=1
